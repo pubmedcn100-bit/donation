@@ -4,8 +4,8 @@ SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0));pwd -P)
 cd "$SCRIPT_DIR"
 
 python3 <<HEREDOC
-# -*- coding: utf-8 -*-
-from __future__ import print_function  # Python2互換対応
+# -*- coding: utf-8 -*-  # Python2互換対応
+from __future__ import print_function
 
 import sys
 import io
@@ -25,35 +25,28 @@ if sys.version_info[0] < 3:
 # 日本語フォント設定
 # =========================
 plt.rcParams['font.family'] = 'IPAGothic'
-plt.rcParams['axes.unicode_minus'] = False  # マイナス符号の文字化け防止
+plt.rcParams['axes.unicode_minus'] = False
 
 # =========================
 # 初期値
 # =========================
-employment_income = 5250573  # 給与所得控除後の金額(総所得金額)
+employment_income = 5250573
 
-# 控除
-social_security_deduction = 1030379  # 社会保険料控除
-ideco = 240000  # iDeCo
-basic_income_tax_deduction = 580000  # 所得税の基礎控除
-basic_resident_tax_deduction = 430000  # 住民税の基礎控除
+social_security_deduction = 1030379
+ideco = 240000
+basic_income_tax_deduction = 580000
+basic_resident_tax_deduction = 430000
 
-# 株の利益（申告分離課税）
 stock_profit = 21432284
-
-# 去年度からの損失繰越
 carryforward_loss = 2329386
 
 taxable_stock_profit = max(0, stock_profit - carryforward_loss)
 
-# 総所得金額等
 total_income_for_donation = employment_income + taxable_stock_profit
 
-# 株の税率
 STOCK_INCOME_TAX_RATE = 0.15315
 STOCK_RESIDENT_TAX_RATE = 0.05
 
-# 寄付金の金額範囲（10万～上限、5万刻み）
 donation_upper = int(total_income_for_donation * 0.40)
 donation_range = range(100000, donation_upper + 50000, 50000)
 
@@ -148,10 +141,10 @@ resident_income_wari = (
 income_tax_rate = marginal_income_tax_rate(general_income)
 
 # =========================================================
-# ふるさと納税上限（精度改善：実効税率補正）
+# ふるさと納税上限（修正：実効補正を除去）
 # =========================================================
 
-income_tax_rate_effective = income_tax_rate * 1.021
+income_tax_rate_effective = income_tax_rate
 
 denom = max(0.1, 0.90 - income_tax_rate_effective)
 
@@ -168,11 +161,7 @@ max_credit = income_tax_base * 0.25
 donation_limit = max_credit / 0.40 + 2000
 credit_limit_reduction = max_credit + (donation_limit - 2000) * 0.10
 
-# シミュレーション範囲内に制限（描画用）
-plot_donation_limit = min(
-    donation_limit,
-    donation_upper
-)
+plot_donation_limit = min(donation_limit, donation_upper)
 
 # =========================================================
 # 結果
@@ -254,9 +243,9 @@ for donation in donation_range:
         "最大還元率": best_rate
     })
 
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 
 df = pd.DataFrame(results)
 
