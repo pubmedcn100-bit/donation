@@ -7,13 +7,11 @@ python3 <<'HEREDOC'
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-import sys
 import math
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
 import matplotlib.ticker as mticker
 
 plt.rcParams['font.family'] = 'IPAGothic'
@@ -47,8 +45,7 @@ def calc_income_tax(taxable_income: float) -> float:
     for limit, rate in brackets:
         if taxable_income <= prev:
             break
-        taxable_part = min(taxable_income, limit) - prev
-        tax += taxable_part * rate
+        tax += (min(taxable_income, limit) - prev) * rate
         prev = limit
     return tax
 
@@ -56,18 +53,12 @@ def add_reconstruction_tax(tax: float) -> float:
     return tax * 1.021
 
 def marginal_rate(income: float) -> float:
-    if income <= 1950000:
-        return 0.05
-    elif income <= 3300000:
-        return 0.10
-    elif income <= 6950000:
-        return 0.20
-    elif income <= 9000000:
-        return 0.23
-    elif income <= 18000000:
-        return 0.33
-    elif income <= 40000000:
-        return 0.40
+    if income <= 1950000: return 0.05
+    if income <= 3300000: return 0.10
+    if income <= 6950000: return 0.20
+    if income <= 9000000: return 0.23
+    if income <= 18000000: return 0.33
+    if income <= 40000000: return 0.40
     return 0.45
 
 def compute_income():
@@ -85,11 +76,15 @@ def simulate():
 
     income_rate = marginal_rate(general_income)
 
-    max_deduction_target = base_resident_tax * 0.20
-    denom = (0.9 - income_rate * 1.021)
-    denom = max(0.1, denom)
+    # ---- FIX: stabilize upper bound ----
+    available = base_resident_tax * 0.20
 
-    donation_upper = int(max_deduction_target / denom + 2000)
+    denom = max(0.25, 0.9 - income_rate * 1.021)
+
+    donation_upper = int(available / denom + 2000)
+
+    # hard clamp to avoid plot explosion
+    donation_upper = min(donation_upper, 800000)
 
     donation_range = range(100000, donation_upper + 50000, 50000)
 
@@ -132,12 +127,6 @@ def plot(df, donation_upper, max_credit):
 
     df = df.sort_values("寄付金額").reset_index(drop=True)
 
-    ax = plt.gca()
-
-    fmt = mticker.StrMethodFormatter('{x:,.0f}')
-    ax.xaxis.set_major_formatter(fmt)
-    ax.yaxis.set_major_formatter(fmt)
-
     x = df["寄付金額"]
 
     plt.plot(x, df["所得控除還元"], color="blue", label="所得控除還元", linewidth=2)
@@ -145,19 +134,18 @@ def plot(df, donation_upper, max_credit):
 
     ymax = max(df["所得控除還元"].max(), df["税額控除還元"].max())
 
-    du = math.floor(donation_upper)
-    mc = math.floor(max_credit)
-
+    ax = plt.gca()
     ax.set_xlim(0, donation_upper * 1.02)
     ax.set_ylim(0, ymax * 1.05)
 
-    plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
-    plt.text(du, ymax * 0.95, f"ふるさと納税上限:{du:,}円", rotation=90, va='top', ha='right')
+    fmt = mticker.StrMethodFormatter('{x:,.0f}')
+    ax.xaxis.set_major_formatter(fmt)
+    ax.yaxis.set_major_formatter(fmt)
 
-    plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
-    plt.text(df["寄付金額"].min(), mc, f"税額控除上限:{mc:,}円", va="bottom", ha="left")
+    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
+    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
 
-    plt.title('寄付金シミュレーション（correct cap model）')
+    plt.title('寄付金シミュレーション（stabilized）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
