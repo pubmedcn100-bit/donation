@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0));pwd -P)
 cd "$SCRIPT_DIR"
 
-python <<HEREDOC
+python3 <<HEREDOC
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
