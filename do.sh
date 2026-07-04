@@ -127,11 +127,15 @@ def plot(df, donation_upper, max_credit):
     y1 = df["所得控除還元"]
     y2 = df["税額控除還元"]
 
+    total_income = compute_income()[0] + compute_income()[2]
+
     ax = plt.gca()
 
-    # FIX: use actual data bounds
-    xmax = float(x.max())
-    ymax = float(max(y1.max(), y2.max(), max_credit))
+    # X axis: 40% of total income
+    xmax = float(total_income * 0.40)
+
+    # Y axis: max deduction value
+    ymax = float(max(y1.max(), y2.max()))
 
     plt.plot(x, y1, color="blue", label="所得控除還元", linewidth=2)
     plt.plot(x, y2, color="green", label="税額控除還元", linewidth=2)
@@ -143,10 +147,10 @@ def plot(df, donation_upper, max_credit):
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
-    plt.axvline(min(donation_upper, xmax), linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
+    plt.axvline(xmax, linestyle='--', color='black', label='総所得金額等40%（表示上限）')
     plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
 
-    plt.title('寄付金シミュレーション（axis fixed final）')
+    plt.title('寄付金シミュレーション（requested axis spec）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
