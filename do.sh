@@ -33,7 +33,6 @@ STOCK_RESIDENT_TAX_RATE = 0.05
 
 def calc_income_tax(taxable_income: float) -> float:
     taxable_income = max(0, int(taxable_income // 1000 * 1000))
-
     brackets = [
         (1950000, 0.05),
         (3300000, 0.10),
@@ -43,17 +42,14 @@ def calc_income_tax(taxable_income: float) -> float:
         (40000000, 0.40),
         (float('inf'), 0.45)
     ]
-
     tax = 0
     prev = 0
-
     for limit, rate in brackets:
         if taxable_income <= prev:
             break
         taxable_part = min(taxable_income, limit) - prev
         tax += taxable_part * rate
         prev = limit
-
     return tax
 
 def add_reconstruction_tax(tax: float) -> float:
@@ -103,15 +99,10 @@ def simulate():
         credit_resident = deductible * 0.10
         total_credit = actual_credit + credit_resident
 
-        best_method = "税額控除" if total_credit > total_deduction else "所得控除"
-        best = max(total_deduction, total_credit)
-
         results.append({
             "寄付金額": donation,
-            "所得控除": total_deduction,
-            "税額控除": total_credit,
-            "最大還元": best,
-            "方式": best_method
+            "所得控除還元": total_deduction,
+            "税額控除還元": total_credit
         })
 
     return pd.DataFrame(results), donation_upper, max_credit
@@ -127,31 +118,30 @@ def plot(df, donation_upper, max_credit):
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
-    df_ded = df[df["方式"] == "所得控除"]
-    df_tax = df[df["方式"] == "税額控除"]
+    x = df["寄付金額"]
 
-    plt.plot(df_ded["寄付金額"], df_ded["最大還元"], color="blue", label="所得控除最適領域", linewidth=2)
-    plt.plot(df_tax["寄付金額"], df_tax["最大還元"], color="green", label="税額控除最適領域", linewidth=2)
+    # pure curves
+    plt.plot(x, df["所得控除還元"], color="blue", label="所得控除還元", linewidth=2)
+    plt.plot(x, df["税額控除還元"], color="green", label="税額控除還元", linewidth=2)
 
-    ymax = df["最大還元"].max()
+    ymax = max(df["所得控除還元"].max(), df["税額控除還元"].max())
 
     du = math.floor(donation_upper)
     mc = math.floor(max_credit)
 
     ax.set_xlim(0, donation_upper * 1.02)
-    ax.set_ylim(0, max(ymax, max_credit) * 1.05)
+    ax.set_ylim(0, ymax * 1.05)
 
-    # upper bounds
     plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
-    plt.text(du, ymax * 0.95, f"上限:{du:,}円", rotation=90, va='top', ha='right')
+    plt.text(du, ymax * 0.95, f"ふるさと納税上限:{du:,}円", rotation=90, va='top', ha='right')
 
     plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
-    plt.text(df["寄付金額"].min(), mc, f"上限:{mc:,}円", va="bottom", ha="left")
+    plt.text(df["寄付金額"].min(), mc, f"税額控除上限:{mc:,}円", va="bottom", ha="left")
 
     kink_donation = math.floor(max_credit / 0.40 + 2000)
     plt.axvline(kink_donation, linestyle=':', color='gray', label='税額控除飽和点')
 
-    plt.title('寄付金シミュレーション（regime split）')
+    plt.title('寄付金シミュレーション（pure decomposition）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
