@@ -166,6 +166,16 @@ credit_limit_reduction = max_credit + (donation_limit - 2000) * 0.10
 plot_donation_limit = min(donation_limit, donation_upper)
 
 # =========================================================
+# ふるさと納税上限（追加修正）
+# =========================================================
+
+furusato_limit = (
+    resident_income_wari * 0.20
+    / max(0.1, (0.90 - income_tax_rate * 1.021))
+    + 2000
+)
+
+# =========================================================
 # 結果
 # =========================================================
 
@@ -214,7 +224,6 @@ for donation in donation_range:
         total_reduction_deduction / donation
     ) * 100
 
-    # 完全制度式
     total_reduction_credit = furusato_deduction(donation)
 
     reduction_rate_credit = (
