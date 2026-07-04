@@ -8,6 +8,7 @@ python3 <<'HEREDOC'
 from __future__ import print_function
 
 import sys
+import math
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -69,24 +70,6 @@ def calc_income_tax(taxable_income: float) -> float:
 def add_reconstruction_tax(tax: float) -> float:
     return tax * 1.021
 
-
-def marginal_rate(taxable_income: float) -> float:
-    taxable_income = max(0, int(taxable_income // 1000 * 1000))
-
-    if taxable_income <= 1950000:
-        return 0.05
-    elif taxable_income <= 3300000:
-        return 0.10
-    elif taxable_income <= 6950000:
-        return 0.20
-    elif taxable_income <= 9000000:
-        return 0.23
-    elif taxable_income <= 18000000:
-        return 0.33
-    elif taxable_income <= 40000000:
-        return 0.40
-    return 0.45
-
 # =========================================================
 # Income base
 # =========================================================
@@ -95,9 +78,9 @@ def compute_income():
     general = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_INCOME_TAX_DEDUCTION)
     resident = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_RESIDENT_TAX_DEDUCTION)
 
-    stock_taxable = max(0, STOCK_PROFIT - CARRYFORWARD_LOSS)
+    stock_income = max(0, STOCK_PROFIT - CARRYFORWARD_LOSS)
 
-    return general, resident, stock_taxable
+    return general, resident, stock_income
 
 # =========================================================
 # Simulation
@@ -160,42 +143,52 @@ def simulate():
 
 def plot(df, donation_upper, max_credit):
     plt.figure(figsize=(14, 7))
-
     sns.lineplot(data=df, x='寄付金額', y='最大還元', label='最適', linewidth=3)
 
     ax = plt.gca()
 
-    # yen formatting (no scientific notation)
     fmt = mticker.StrMethodFormatter('{x:,.0f}')
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
     ymax = df["最大還元"].max()
 
+    # floor-only display values
+    du = math.floor(donation_upper)
+    mc = math.floor(max_credit)
+
+    # axis sync
+    ax.set_xlim(0, donation_upper * 1.02)
+    ax.set_ylim(0, max(ymax, max_credit) * 1.05)
+
     # furu tax upper bound
-    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限額')
-    plt.text(donation_upper, ymax * 0.95,
-             f"上限:{donation_upper:,}円",
+    plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限額')
+    plt.text(du, ymax * 0.95,
+             f"上限:{du:,}円",
              rotation=90, va='top', ha='right')
 
     # 25% credit cap
-    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限額')
-    plt.text(df["寄付金額"].min(), max_credit,
-             f"上限:{max_credit:,}円",
+    plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限額')
+    plt.text(df["寄付金額"].min(), mc,
+             f"上限:{mc:,}円",
              va='bottom', ha='left')
 
-    plt.title('寄付金シミュレーション（Refactored v2 fixed）')
+    # correct kink (income credit saturation point)
+    kink_donation = math.floor(max_credit / 0.40 + 2000)
+    plt.axvline(kink_donation, linestyle=':', color='blue', label='税額控除上限到達点')
+    plt.text(kink_donation, ymax * 0.6,
+             "税額控除上限到達",
+             rotation=90, va='top', ha='right')
+
+    plt.title('寄付金シミュレーション（kink alignment fixed）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
     plt.grid(True)
     plt.legend()
-
     plt.savefig('output.png', dpi=300, bbox_inches='tight')
 
-# =========================================================
 # main
-# =========================================================
 
 df, upper, cap = simulate()
 plot(df, upper, cap)
