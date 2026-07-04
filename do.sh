@@ -254,6 +254,10 @@ import pandas as pd
 
 df = pd.DataFrame(results)
 
+# =========================================================
+# グラフ（完全復元）
+# =========================================================
+
 plt.figure(figsize=(14, 7))
 
 sns.lineplot(
@@ -285,16 +289,78 @@ sns.lineplot(
     color='blue'
 )
 
-plt.axvline(plot_donation_limit, color='black', linestyle='--', alpha=0.7)
-plt.axvline(furusato_limit, color='purple', linestyle=':', linewidth=2)
+# 上限到達点
+plt.axvline(
+    x=plot_donation_limit,
+    color='black',
+    linestyle='--',
+    alpha=0.7
+)
 
-plt.scatter(plot_donation_limit, credit_limit_reduction, color='black', zorder=10)
+plt.axvline(
+    x=furusato_limit,
+    color='purple',
+    linestyle=':',
+    linewidth=2,
+    label=u'ふるさと納税上限'
+)
 
-plt.title('名古屋大学寄付 控除シミュレーション')
-plt.xlabel('寄付金額 [円]')
-plt.ylabel('還元額 [円]')
+plt.scatter(
+    plot_donation_limit,
+    credit_limit_reduction,
+    color='black',
+    zorder=10
+)
+
+plt.annotate(
+    u'税額控除25%上限到達\n{:,}円'.format(int(plot_donation_limit)),
+    xy=(plot_donation_limit, credit_limit_reduction),
+    xytext=(plot_donation_limit + 80000,
+            credit_limit_reduction + 100000),
+    arrowprops=dict(arrowstyle='->'),
+    fontsize=10
+)
+
+plt.axvline(
+    x=plot_donation_limit,
+    color='black',
+    linestyle='--',
+    alpha=0.7,
+    label=u'税額控除25%上限到達'
+)
+
+plt.annotate(
+    u'ふるさと納税上限\n{:,}円'.format(int(furusato_limit)),
+    xy=(furusato_limit, 800000),
+    xytext=(
+        furusato_limit + 80000,
+        900000
+    ),
+    arrowprops=dict(arrowstyle='->'),
+    fontsize=10
+)
+
+plt.title(
+    u'名古屋大学寄付 控除シミュレーション',
+    fontsize=16
+)
+
+plt.xlabel(
+    u'寄付金額 [円]',
+    fontsize=12
+)
+
+plt.ylabel(
+    u'還元額 [円]',
+    fontsize=12
+)
+
 plt.grid(True)
 plt.legend()
 
-plt.savefig('output.png', dpi=300, bbox_inches='tight')
+plt.savefig(
+    'output.png',
+    dpi=300,
+    bbox_inches='tight'
+)
 HEREDOC
