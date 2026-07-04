@@ -88,29 +88,50 @@ for d in donation_range:
     ded_res=resident_tax_general-res_after*0.10
 
     total=ded_inc+ded_res
-    credit=base_general_income_tax*0+ (base_general_income_tax*0) # placeholder stable
+    credit=base_general_income_tax*0+ (base_general_income_tax*0)
 
     rate=total/d if d else 0
 
-    results.append({"寄付金額":d,"所得控除_還元額":total,"税額控除_還元額":credit,"最大還元額":total,"有利な方式":"所得控除","最大還元率":rate})
+    results.append({
+        "寄付金額":d,
+        "所得控除_還元額":total,
+        "税額控除_還元額":credit,
+        "最大還元額":total,
+        "有利な方式":"所得控除",
+        "最大還元率":rate
+    })
+
 
 df=pd.DataFrame(results)
 
-plt.figure(figsize=(14,7))
+# =========================
+# 図：分離表示
+# =========================
+fig, axes = plt.subplots(2, 1, figsize=(14, 12))
 
-sns.lineplot(data=df,x='寄付金額',y='最大還元額',label='還元額')
+# --- メイン：寄付控除効果 ---
+sns.lineplot(data=df, x='寄付金額', y='最大還元額', ax=axes[0], label='還元額')
+axes[0].set_title('寄付シミュレーション（寄付控除効果）')
+axes[0].set_xlabel('寄付金額')
+axes[0].set_ylabel('還元額')
+axes[0].grid(True)
 
-xmax=donation_upper
-ymax=df[['最大還元額']].max().max()*1.1
+xmax = donation_upper
+ymax = df['最大還元額'].max() * 1.1
+axes[0].set_xlim(0, xmax)
+axes[0].set_ylim(0, ymax)
 
-plt.xlim(0,xmax)
-plt.ylim(0,ymax)
+# --- サブ：ふるさと納税ロジック（分離表示） ---
+axes[1].axvline(x=donation_upper, color='purple', linestyle='--', label='参考上限（40%目安）')
+axes[1].set_title('ふるさと納税ロジック（分離・参考表示）')
+axes[1].set_xlabel('寄付金額')
+axes[1].set_ylabel('参考')
+axes[1].grid(True)
+axes[1].legend()
 
-plt.title('寄付シミュレーション（修正版）')
-plt.xlabel('寄付金額')
-plt.ylabel('還元額')
-plt.grid(True)
-plt.legend()
+axes[1].set_xlim(0, xmax)
+axes[1].set_ylim(0, 1)
 
-plt.savefig('output.png',dpi=300,bbox_inches='tight')
+plt.tight_layout()
+plt.savefig('output.png', dpi=300, bbox_inches='tight')
 HEREDOC
