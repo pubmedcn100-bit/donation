@@ -143,7 +143,8 @@ def simulate():
 
 def plot(df, donation_upper, max_credit):
     plt.figure(figsize=(14, 7))
-    sns.lineplot(data=df, x='寄付金額', y='最大還元', label='最適', linewidth=3)
+
+    df = df.sort_values("寄付金額").reset_index(drop=True)
 
     ax = plt.gca()
 
@@ -151,36 +152,53 @@ def plot(df, donation_upper, max_credit):
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
+    # --- split lines by regime ---
+    df_ded = df[df["方式"] == "所得控除"]
+    df_tax = df[df["方式"] == "税額控除"]
+
+    plt.plot(df_ded["寄付金額"], df_ded["最大還元"],
+             color="blue", label="所得控除最適領域", linewidth=2)
+
+    plt.plot(df_tax["寄付金額"], df_tax["最大還元"],
+             color="green", label="税額控除最適領域", linewidth=2)
+
+    # --- optimal marker ---
+    best_idx = df["最大還元"].idxmax()
+    best_row = df.loc[best_idx]
+
+    plt.scatter(best_row["寄付金額"], best_row["最大還元"],
+                color="gold", marker="*", s=250, zorder=5,
+                label="★最適寄付額")
+
+    plt.text(best_row["寄付金額"], best_row["最大還元"],
+             "★最適", va="bottom", ha="left")
+
     ymax = df["最大還元"].max()
 
-    # floor-only display values
+    # floor display values
     du = math.floor(donation_upper)
     mc = math.floor(max_credit)
 
-    # axis sync
     ax.set_xlim(0, donation_upper * 1.02)
     ax.set_ylim(0, max(ymax, max_credit) * 1.05)
 
-    # furu tax upper bound
+    # upper bound (donation)
     plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限額')
     plt.text(du, ymax * 0.95,
              f"上限:{du:,}円",
              rotation=90, va='top', ha='right')
 
-    # 25% credit cap
+    # 25% cap
     plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限額')
     plt.text(df["寄付金額"].min(), mc,
              f"上限:{mc:,}円",
-             va='bottom', ha='left')
+             va="bottom", ha="left")
 
-    # correct kink (income credit saturation point)
+    # kink
     kink_donation = math.floor(max_credit / 0.40 + 2000)
-    plt.axvline(kink_donation, linestyle=':', color='blue', label='税額控除上限到達点')
-    plt.text(kink_donation, ymax * 0.6,
-             "税額控除上限到達",
-             rotation=90, va='top', ha='right')
+    plt.axvline(kink_donation, linestyle=':', color='gray', label='税額控除飽和点')
 
-    plt.title('寄付金シミュレーション（kink alignment fixed）')
+    plt.title('寄付金シミュレーション（optimal + regime split）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
