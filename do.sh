@@ -16,15 +16,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 
-# =========================================================
-# Font / style
-# =========================================================
 plt.rcParams['font.family'] = 'IPAGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
-# =========================================================
-# Input parameters
-# =========================================================
 EMPLOYMENT_INCOME = 5250573
 SOCIAL_SECURITY_DEDUCTION = 1030379
 I_DECO = 240000
@@ -36,10 +30,6 @@ CARRYFORWARD_LOSS = 2329386
 
 STOCK_INCOME_TAX_RATE = 0.15315
 STOCK_RESIDENT_TAX_RATE = 0.05
-
-# =========================================================
-# Tax functions
-# =========================================================
 
 def calc_income_tax(taxable_income: float) -> float:
     taxable_income = max(0, int(taxable_income // 1000 * 1000))
@@ -66,25 +56,14 @@ def calc_income_tax(taxable_income: float) -> float:
 
     return tax
 
-
 def add_reconstruction_tax(tax: float) -> float:
     return tax * 1.021
-
-# =========================================================
-# Income base
-# =========================================================
 
 def compute_income():
     general = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_INCOME_TAX_DEDUCTION)
     resident = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_RESIDENT_TAX_DEDUCTION)
-
     stock_income = max(0, STOCK_PROFIT - CARRYFORWARD_LOSS)
-
     return general, resident, stock_income
-
-# =========================================================
-# Simulation
-# =========================================================
 
 def simulate():
     general_income, resident_income, stock_income = compute_income()
@@ -137,10 +116,6 @@ def simulate():
 
     return pd.DataFrame(results), donation_upper, max_credit
 
-# =========================================================
-# Plot
-# =========================================================
-
 def plot(df, donation_upper, max_credit):
     plt.figure(figsize=(14, 7))
 
@@ -152,53 +127,31 @@ def plot(df, donation_upper, max_credit):
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
-    # --- split lines by regime ---
     df_ded = df[df["方式"] == "所得控除"]
     df_tax = df[df["方式"] == "税額控除"]
 
-    plt.plot(df_ded["寄付金額"], df_ded["最大還元"],
-             color="blue", label="所得控除最適領域", linewidth=2)
-
-    plt.plot(df_tax["寄付金額"], df_tax["最大還元"],
-             color="green", label="税額控除最適領域", linewidth=2)
-
-    # --- optimal marker ---
-    best_idx = df["最大還元"].idxmax()
-    best_row = df.loc[best_idx]
-
-    plt.scatter(best_row["寄付金額"], best_row["最大還元"],
-                color="gold", marker="*", s=250, zorder=5,
-                label="★最適寄付額")
-
-    plt.text(best_row["寄付金額"], best_row["最大還元"],
-             "★最適", va="bottom", ha="left")
+    plt.plot(df_ded["寄付金額"], df_ded["最大還元"], color="blue", label="所得控除最適領域", linewidth=2)
+    plt.plot(df_tax["寄付金額"], df_tax["最大還元"], color="green", label="税額控除最適領域", linewidth=2)
 
     ymax = df["最大還元"].max()
 
-    # floor display values
     du = math.floor(donation_upper)
     mc = math.floor(max_credit)
 
     ax.set_xlim(0, donation_upper * 1.02)
     ax.set_ylim(0, max(ymax, max_credit) * 1.05)
 
-    # upper bound (donation)
-    plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限額')
-    plt.text(du, ymax * 0.95,
-             f"上限:{du:,}円",
-             rotation=90, va='top', ha='right')
+    # upper bounds
+    plt.axvline(du, linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
+    plt.text(du, ymax * 0.95, f"上限:{du:,}円", rotation=90, va='top', ha='right')
 
-    # 25% cap
-    plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限額')
-    plt.text(df["寄付金額"].min(), mc,
-             f"上限:{mc:,}円",
-             va="bottom", ha="left")
+    plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
+    plt.text(df["寄付金額"].min(), mc, f"上限:{mc:,}円", va="bottom", ha="left")
 
-    # kink
     kink_donation = math.floor(max_credit / 0.40 + 2000)
     plt.axvline(kink_donation, linestyle=':', color='gray', label='税額控除飽和点')
 
-    plt.title('寄付金シミュレーション（optimal + regime split）')
+    plt.title('寄付金シミュレーション（regime split）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
