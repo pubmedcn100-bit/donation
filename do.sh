@@ -55,6 +55,21 @@ def calc_income_tax(taxable_income: float) -> float:
 def add_reconstruction_tax(tax: float) -> float:
     return tax * 1.021
 
+def marginal_rate(income: float) -> float:
+    if income <= 1950000:
+        return 0.05
+    elif income <= 3300000:
+        return 0.10
+    elif income <= 6950000:
+        return 0.20
+    elif income <= 9000000:
+        return 0.23
+    elif income <= 18000000:
+        return 0.33
+    elif income <= 40000000:
+        return 0.40
+    return 0.45
+
 def compute_income():
     general = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_INCOME_TAX_DEDUCTION)
     resident = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_RESIDENT_TAX_DEDUCTION)
@@ -68,9 +83,14 @@ def simulate():
     base_stock_tax = stock_income * STOCK_INCOME_TAX_RATE
     base_resident_tax = resident_income * 0.10
 
-    max_credit = (base_income_tax + base_stock_tax) * 0.25
+    income_rate = marginal_rate(general_income)
 
-    donation_upper = int((general_income + stock_income) * 0.40)
+    max_deduction_target = base_resident_tax * 0.20
+    denom = (0.9 - income_rate * 1.021)
+    denom = max(0.1, denom)
+
+    donation_upper = int(max_deduction_target / denom + 2000)
+
     donation_range = range(100000, donation_upper + 50000, 50000)
 
     results = []
@@ -94,7 +114,7 @@ def simulate():
         total_deduction = deduction_income + deduction_resident
 
         tentative_credit = deductible * 0.40
-        actual_credit = min(tentative_credit, max_credit)
+        actual_credit = min(tentative_credit, base_resident_tax)
 
         credit_resident = deductible * 0.10
         total_credit = actual_credit + credit_resident
@@ -105,7 +125,7 @@ def simulate():
             "税額控除還元": total_credit
         })
 
-    return pd.DataFrame(results), donation_upper, max_credit
+    return pd.DataFrame(results), donation_upper, base_resident_tax
 
 def plot(df, donation_upper, max_credit):
     plt.figure(figsize=(14, 7))
@@ -120,7 +140,6 @@ def plot(df, donation_upper, max_credit):
 
     x = df["寄付金額"]
 
-    # pure curves
     plt.plot(x, df["所得控除還元"], color="blue", label="所得控除還元", linewidth=2)
     plt.plot(x, df["税額控除還元"], color="green", label="税額控除還元", linewidth=2)
 
@@ -138,10 +157,7 @@ def plot(df, donation_upper, max_credit):
     plt.axhline(mc, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
     plt.text(df["寄付金額"].min(), mc, f"税額控除上限:{mc:,}円", va="bottom", ha="left")
 
-    kink_donation = math.floor(max_credit / 0.40 + 2000)
-    plt.axvline(kink_donation, linestyle=':', color='gray', label='税額控除飽和点')
-
-    plt.title('寄付金シミュレーション（pure decomposition）')
+    plt.title('寄付金シミュレーション（correct cap model）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
