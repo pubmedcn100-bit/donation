@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0)); pwd -P)
 cd "$SCRIPT_DIR"
 
-python <<'HEREDOC'
+python3 <<'HEREDOC'
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.ticker as mticker
 
 # =========================================================
 # Font / style
@@ -162,15 +163,26 @@ def plot(df, donation_upper, max_credit):
 
     sns.lineplot(data=df, x='寄付金額', y='最大還元', label='最適', linewidth=3)
 
+    ax = plt.gca()
+
+    # yen formatting (no scientific notation)
+    fmt = mticker.StrMethodFormatter('{x:,.0f}')
+    ax.xaxis.set_major_formatter(fmt)
+    ax.yaxis.set_major_formatter(fmt)
+
     ymax = df["最大還元"].max()
 
     # furu tax upper bound
     plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限額')
-    plt.text(donation_upper, ymax * 0.95, 'ふるさと納税上限額', rotation=90, va='top', ha='right')
+    plt.text(donation_upper, ymax * 0.95,
+             f"上限:{donation_upper:,}円",
+             rotation=90, va='top', ha='right')
 
     # 25% credit cap
     plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限額')
-    plt.text(df["寄付金額"].min(), max_credit, '25%税額控除上限額', va='bottom', ha='left')
+    plt.text(df["寄付金額"].min(), max_credit,
+             f"上限:{max_credit:,}円",
+             va='bottom', ha='left')
 
     plt.title('寄付金シミュレーション（Refactored v2 fixed）')
     plt.xlabel('寄付金額')
@@ -187,5 +199,4 @@ def plot(df, donation_upper, max_credit):
 
 df, upper, cap = simulate()
 plot(df, upper, cap)
-
 HEREDOC
