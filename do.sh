@@ -76,14 +76,10 @@ def simulate():
 
     income_rate = marginal_rate(general_income)
 
-    # ---- FIX: stabilize upper bound ----
     available = base_resident_tax * 0.20
-
     denom = max(0.25, 0.9 - income_rate * 1.021)
 
     donation_upper = int(available / denom + 2000)
-
-    # hard clamp to avoid plot explosion
     donation_upper = min(donation_upper, 800000)
 
     donation_range = range(100000, donation_upper + 50000, 50000)
@@ -128,24 +124,29 @@ def plot(df, donation_upper, max_credit):
     df = df.sort_values("寄付金額").reset_index(drop=True)
 
     x = df["寄付金額"]
-
-    plt.plot(x, df["所得控除還元"], color="blue", label="所得控除還元", linewidth=2)
-    plt.plot(x, df["税額控除還元"], color="green", label="税額控除還元", linewidth=2)
-
-    ymax = max(df["所得控除還元"].max(), df["税額控除還元"].max())
+    y1 = df["所得控除還元"]
+    y2 = df["税額控除還元"]
 
     ax = plt.gca()
-    ax.set_xlim(0, donation_upper * 1.02)
+
+    # FIX: use actual data bounds
+    xmax = float(x.max())
+    ymax = float(max(y1.max(), y2.max(), max_credit))
+
+    plt.plot(x, y1, color="blue", label="所得控除還元", linewidth=2)
+    plt.plot(x, y2, color="green", label="税額控除還元", linewidth=2)
+
+    ax.set_xlim(0, xmax * 1.02)
     ax.set_ylim(0, ymax * 1.05)
 
     fmt = mticker.StrMethodFormatter('{x:,.0f}')
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
-    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
+    plt.axvline(min(donation_upper, xmax), linestyle='--', color='black', label='ふるさと納税上限（寄付上限額）')
     plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
 
-    plt.title('寄付金シミュレーション（stabilized）')
+    plt.title('寄付金シミュレーション（axis fixed final）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
