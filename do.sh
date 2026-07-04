@@ -151,27 +151,34 @@ def simulate():
             "方式": best_method
         })
 
-    return pd.DataFrame(results), donation_upper
+    return pd.DataFrame(results), donation_upper, max_credit
 
 # =========================================================
 # Plot
 # =========================================================
 
-def plot(df, donation_upper):
+def plot(df, donation_upper, max_credit):
     plt.figure(figsize=(14, 7))
+
     sns.lineplot(data=df, x='寄付金額', y='最大還元', label='最適', linewidth=3)
-    plt.axvline(donation_upper, linestyle='--', color='black', label='上限')
-    plt.title('寄付金シミュレーション（Refactored v2）')
+
+    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限')
+    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限')
+
+    plt.title('寄付金シミュレーション（Refactored v2 fixed）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
+
     plt.grid(True)
     plt.legend()
+
     plt.savefig('output.png', dpi=300, bbox_inches='tight')
 
 # =========================================================
 # main
 # =========================================================
 
-df, upper = simulate()
-plot(df, upper)
+df, upper, cap = simulate()
+plot(df, upper, cap)
+
 HEREDOC
