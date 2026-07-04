@@ -16,14 +16,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Python2の場合のstdout再設定（Python3では不要）
 if sys.version_info[0] < 3:
     reload(sys)
     sys.setdefaultencoding('utf-8')
 
-# =========================
-# 日本語フォント設定
-# =========================
 plt.rcParams['font.family'] = 'IPAGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
@@ -141,6 +137,23 @@ resident_income_wari = (
 income_tax_rate = marginal_income_tax_rate(general_income)
 
 # =========================================================
+# ふるさと納税（完全制度式）
+# =========================================================
+
+def furusato_deduction(donation):
+    base = max(0, donation - 2000)
+
+    income_tax_refund = base * income_tax_rate * 1.021
+    resident_basic = base * 0.10
+
+    special_rate = max(0.0, 0.90 - income_tax_rate * 1.021)
+    special = base * special_rate
+
+    special = min(special, resident_income_wari * 0.20)
+
+    return income_tax_refund + resident_basic + special
+
+# =========================================================
 # ふるさと納税上限（修正：実効補正を除去）
 # =========================================================
 
@@ -217,9 +230,7 @@ for donation in donation_range:
 
     credit_resident_reduction = deductible * 0.10
 
-    total_reduction_credit = (
-        actual_credit + credit_resident_reduction
-    )
+    total_reduction_credit = furusato_deduction(donation)
 
     reduction_rate_credit = (
         total_reduction_credit / donation
