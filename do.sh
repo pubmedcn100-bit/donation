@@ -154,20 +154,9 @@ def furusato_deduction(donation):
     return income_tax_refund + resident_basic + special
 
 # =========================================================
-# ふるさと納税上限（修正：実効補正を除去）
+# 上限（表示用・既存維持）
 # =========================================================
 
-income_tax_rate_effective = income_tax_rate
-
-denom = max(0.1, 0.90 - income_tax_rate_effective)
-
-furusato_limit = (
-    resident_income_wari * 0.20
-    / denom
-    + 2000
-)
-
-# 税額控除の上限（所得税額の25%）
 income_tax_base = base_general_income_tax + base_stock_income_tax
 max_credit = income_tax_base * 0.25
 
@@ -225,11 +214,7 @@ for donation in donation_range:
         total_reduction_deduction / donation
     ) * 100
 
-    tentative_credit = deductible * 0.40
-    actual_credit = min(tentative_credit, max_credit)
-
-    credit_resident_reduction = deductible * 0.10
-
+    # 完全制度式
     total_reduction_credit = furusato_deduction(donation)
 
     reduction_rate_credit = (
