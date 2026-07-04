@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0));pwd -P) 
+SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0));pwd -P)
 cd "$SCRIPT_DIR"
 
 python3 <<HEREDOC
@@ -24,14 +24,12 @@ if sys.version_info[0] < 3:
 # =========================
 # 日本語フォント設定
 # =========================
-
 plt.rcParams['font.family'] = 'IPAGothic'
 plt.rcParams['axes.unicode_minus'] = False  # マイナス符号の文字化け防止
 
 # =========================
 # 初期値
 # =========================
-
 employment_income = 5250573  # 給与所得控除後の金額(総所得金額)
 
 # 控除
@@ -41,25 +39,18 @@ basic_income_tax_deduction = 580000  # 所得税の基礎控除
 basic_resident_tax_deduction = 430000  # 住民税の基礎控除
 
 # 株の利益（申告分離課税）
-stock_profit = 0
-stock_profit = 16000000 # 株の利益（1600万円）
-stock_profit = 5000000 # 株の利益（500万円）
 stock_profit = 21432284
 
 # 去年度からの損失繰越
 carryforward_loss = 2329386
 
-# 損失繰越を適用した後の課税対象株利益
-taxable_stock_profit = max(
-    0,
-    stock_profit - carryforward_loss
-)
+taxable_stock_profit = max(0, stock_profit - carryforward_loss)
 
 # 総所得金額等
 total_income_for_donation = employment_income + taxable_stock_profit
 
 # 株の税率
-STOCK_INCOME_TAX_RATE = 0.15315   # 15% + 復興税0.315%
+STOCK_INCOME_TAX_RATE = 0.15315
 STOCK_RESIDENT_TAX_RATE = 0.05
 
 # 寄付金の金額範囲（10万～上限、5万刻み）
@@ -71,10 +62,7 @@ donation_range = range(100000, donation_upper + 50000, 50000)
 # ============================================
 
 def calc_income_tax(taxable_income):
-
     taxable_income = max(0, taxable_income)
-
-    # 1000円未満切捨て
     taxable_income = int(taxable_income // 1000 * 1000)
 
     brackets = [
@@ -91,26 +79,19 @@ def calc_income_tax(taxable_income):
     prev = 0
 
     for limit, rate in brackets:
-
         if taxable_income <= prev:
             break
-
-        taxable_part = min(taxable_income, limit) - prev
-
-        tax += taxable_part * rate
-
+        tax += (min(taxable_income, limit) - prev) * rate
         prev = limit
 
     return tax
 
 
 def add_reconstruction_tax(tax):
-
     return tax * 1.021
 
 
 def marginal_income_tax_rate(taxable_income):
-
     taxable_income = max(0, taxable_income)
     taxable_income = int(taxable_income // 1000 * 1000)
 
@@ -133,16 +114,14 @@ def marginal_income_tax_rate(taxable_income):
 # 総合課税所得
 # =========================================================
 
-general_income = max(
-    0,
+general_income = max(0,
     employment_income
     - social_security_deduction
     - ideco
     - basic_income_tax_deduction
 )
 
-resident_income = max(
-    0,
+resident_income = max(0,
     employment_income
     - social_security_deduction
     - ideco
@@ -153,25 +132,11 @@ resident_income = max(
 # 基準税額
 # =========================================================
 
-base_general_income_tax = add_reconstruction_tax(
-    calc_income_tax(general_income)
-)
+base_general_income_tax = add_reconstruction_tax(calc_income_tax(general_income))
+base_stock_income_tax = taxable_stock_profit * STOCK_INCOME_TAX_RATE
 
-base_stock_income_tax = (
-    taxable_stock_profit * STOCK_INCOME_TAX_RATE
-)
-
-base_stock_resident_tax = (
-    taxable_stock_profit * STOCK_RESIDENT_TAX_RATE
-)
-
-# 総合課税分
 resident_tax_general = resident_income * 0.10
-
-# 株譲渡所得分（住民税5%）
 resident_tax_stock = taxable_stock_profit * STOCK_RESIDENT_TAX_RATE
-
-# 調整控除（高所得者は通常2,500円）
 adjustment_credit = 2500
 
 resident_income_wari = (
@@ -180,19 +145,23 @@ resident_income_wari = (
     - adjustment_credit
 )
 
-# 株の利益は足さず、給与所得（総合課税）だけで判定する（これで税率が正しい20%になります）
 income_tax_rate = marginal_income_tax_rate(general_income)
+
+# =========================================================
+# ふるさと納税上限（精度改善：実効税率補正）
+# =========================================================
+
+income_tax_rate_effective = income_tax_rate * 1.021
+
+denom = max(0.1, 0.90 - income_tax_rate_effective)
 
 furusato_limit = (
     resident_income_wari * 0.20
-    /
-    (0.90 - income_tax_rate)
+    / denom
     + 2000
 )
 
-
 # 税額控除の上限（所得税額の25%）
-# 総合課税分と申告分離課税分の所得税額を合算
 income_tax_base = base_general_income_tax + base_stock_income_tax
 max_credit = income_tax_base * 0.25
 
@@ -211,91 +180,39 @@ plot_donation_limit = min(
 
 results = []
 
-# =========================================================
-# ループ
-# =========================================================
-
 for donation in donation_range:
 
     deductible = max(0, donation - 2000)
 
-    # =====================================================
-    # 1. 所得控除方式
-    # 寄付金控除（所得控除）は、申告分離課税の株式譲渡所得にも控除が及ぶ
-    # =====================================================
-
-    # -----------------------------------------
-    # 総合課税へ先に適用
-    # -----------------------------------------
-
-    general_after = max(
-        0,
+    general_after = max(0,
         general_income - deductible
     )
 
-    used_for_general = min(
-        deductible,
-        general_income
-    )
+    used_for_general = min(deductible, general_income)
+    remaining_for_stock = max(0, deductible - used_for_general)
 
-    remaining_for_stock = max(
-        0,
-        deductible - used_for_general
-    )
-
-    # -----------------------------------------
-    # 株所得へ残り適用
-    # -----------------------------------------
-
-    stock_after = max(
-        0,
-        taxable_stock_profit - remaining_for_stock
-    )
-
-    # -----------------------------------------
-    # 税額計算
-    # -----------------------------------------
+    stock_after = max(0, taxable_stock_profit - remaining_for_stock)
 
     income_tax_general_after = add_reconstruction_tax(
         calc_income_tax(general_after)
     )
 
-    stock_tax_after = (
-        stock_after * STOCK_INCOME_TAX_RATE
-    )
-
-    # -----------------------------------------
-    # 所得税減税額
-    # -----------------------------------------
+    stock_tax_after = stock_after * STOCK_INCOME_TAX_RATE
 
     deduction_income_tax_reduction = (
         (base_general_income_tax + base_stock_income_tax)
-        -
-        (income_tax_general_after + stock_tax_after)
+        - (income_tax_general_after + stock_tax_after)
     )
 
-    # -----------------------------------------
-    # 住民税
-    # 名古屋大学は寄附金税額控除対象法人に指定されているので、10％控除を受けることができる
-    # -----------------------------------------
-
-    resident_after = max(
-        0,
+    resident_after = max(0,
         resident_income - deductible
     )
 
-    resident_tax_general_after = (
-        resident_after * 0.10
-    )
+    resident_tax_general_after = resident_after * 0.10
 
     deduction_resident_reduction = (
-        resident_tax_general
-        - resident_tax_general_after
+        resident_tax_general - resident_tax_general_after
     )
-
-    # -----------------------------------------
-    # 合計
-    # -----------------------------------------
 
     total_reduction_deduction = (
         deduction_income_tax_reduction
@@ -303,111 +220,45 @@ for donation in donation_range:
     )
 
     reduction_rate_deduction = (
-        total_reduction_deduction
-        / donation
+        total_reduction_deduction / donation
     ) * 100
 
-    # =====================================================
-    # 2. 税額控除方式
-    #    （名古屋大学 特定基金想定）
-    # =====================================================
-
-    # -----------------------------------------
-    # 税額控除
-    # 文部科学大臣証明を受けた学校法人への税額控除制度の上限は25%
-    # 総合課税分と申告分離課税（株式譲渡所得）の所得税額の双方を含める
-    # -----------------------------------------
-
     tentative_credit = deductible * 0.40
+    actual_credit = min(tentative_credit, max_credit)
 
-    actual_credit = min(
-        tentative_credit,
-        max_credit
-    )
-
-    # -----------------------------------------
-    # 住民税
-    # （大学寄付は特例控除なし）
-    # -----------------------------------------
-
-    credit_resident_reduction = (
-        deductible * 0.10
-    )
-
-    # -----------------------------------------
-    # 合計
-    # -----------------------------------------
+    credit_resident_reduction = deductible * 0.10
 
     total_reduction_credit = (
-        actual_credit
-        + credit_resident_reduction
+        actual_credit + credit_resident_reduction
     )
 
     reduction_rate_credit = (
-        total_reduction_credit
-        / donation
+        total_reduction_credit / donation
     ) * 100
 
-    # =====================================================
-    # 3. 有利な方を選択
-    # =====================================================
-
     if total_reduction_credit > total_reduction_deduction:
-
         best_method = "税額控除"
-
         best_reduction = total_reduction_credit
-
         best_rate = reduction_rate_credit
-
     else:
-
         best_method = "所得控除"
-
         best_reduction = total_reduction_deduction
-
         best_rate = reduction_rate_deduction
 
-    # =====================================================
-    # 保存
-    # =====================================================
-
     results.append({
-
         "寄付金額": donation,
-
-        "所得控除_還元額":
-            total_reduction_deduction,
-
-        "所得控除_還元率":
-            reduction_rate_deduction,
-
-        "税額控除_還元額":
-            total_reduction_credit,
-
-        "税額控除_還元率":
-            reduction_rate_credit,
-
-        "有利な方式":
-            best_method,
-
-        "最大還元額":
-            best_reduction,
-
-        "最大還元率":
-            best_rate
+        "所得控除_還元額": total_reduction_deduction,
+        "税額控除_還元額": total_reduction_credit,
+        "有利な方式": best_method,
+        "最大還元額": best_reduction,
+        "最大還元率": best_rate
     })
 
-
-# =========================================================
-# DataFrame
-# =========================================================
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 df = pd.DataFrame(results)
-
-# =========================================================
-# グラフ
-# =========================================================
 
 plt.figure(figsize=(14, 7))
 
@@ -420,12 +271,8 @@ sns.lineplot(
     color='green'
 )
 
-df_credit = df[
-    df["寄付金額"] <= plot_donation_limit
-]
-
 sns.lineplot(
-    data=df_credit,
+    data=df,
     x='寄付金額',
     y='税額控除_還元額',
     label='税額控除方式',
@@ -444,84 +291,16 @@ sns.lineplot(
     color='blue'
 )
 
-# 上限到達点
-plt.axvline(
-    x=plot_donation_limit,
-    color='black',
-    linestyle='--',
-    alpha=0.7
-)
+plt.axvline(plot_donation_limit, color='black', linestyle='--', alpha=0.7)
+plt.axvline(furusato_limit, color='purple', linestyle=':', linewidth=2)
 
-plt.axvline(
-    x=furusato_limit,
-    color='purple',
-    linestyle=':',
-    linewidth=2,
-    label=u'ふるさと納税上限'
-)
+plt.scatter(plot_donation_limit, credit_limit_reduction, color='black', zorder=10)
 
-plt.scatter(
-    plot_donation_limit,
-    credit_limit_reduction,
-    color='black',
-    zorder=10
-)
-
-plt.annotate(
-    u'税額控除25%上限到達\n{:,}円'.format(int(plot_donation_limit)),
-    xy=(plot_donation_limit, credit_limit_reduction),
-    xytext=(plot_donation_limit + 80000,
-            credit_limit_reduction + 100000),
-    arrowprops=dict(arrowstyle='->'),
-    fontsize=10
-)
-
-plt.axvline(
-    x=plot_donation_limit,
-    color='black',
-    linestyle='--',
-    alpha=0.7,
-    label=u'税額控除25%上限到達'
-)
-
-plt.annotate(
-    u'ふるさと納税上限\n{:,}円'.format(int(furusato_limit)),
-    xy=(furusato_limit, 800000),
-    xytext=(
-        furusato_limit + 80000,
-        900000
-    ),
-    arrowprops=dict(arrowstyle='->'),
-    fontsize=10,
-    color='purple'
-)
-
-plt.title(
-    u'名古屋大学寄付 控除シミュレーション',
-    fontsize=16
-)
-
-plt.xlabel(
-    u'寄付金額 [円]',
-    fontsize=12
-)
-
-plt.ylabel(
-    u'還元額 [円]',
-    fontsize=12
-)
-
-#plt.ylim(0, 110)
-
+plt.title('名古屋大学寄付 控除シミュレーション')
+plt.xlabel('寄付金額 [円]')
+plt.ylabel('還元額 [円]')
 plt.grid(True)
-
 plt.legend()
 
-plt.savefig(
-    'output.png',
-    dpi=300,
-    bbox_inches='tight'
-)
-
+plt.savefig('output.png', dpi=300, bbox_inches='tight')
 HEREDOC
-
