@@ -162,8 +162,15 @@ def plot(df, donation_upper, max_credit):
 
     sns.lineplot(data=df, x='寄付金額', y='最大還元', label='最適', linewidth=3)
 
-    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限')
-    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限')
+    ymax = df["最大還元"].max()
+
+    # furu tax upper bound
+    plt.axvline(donation_upper, linestyle='--', color='black', label='ふるさと納税上限額')
+    plt.text(donation_upper, ymax * 0.95, 'ふるさと納税上限額', rotation=90, va='top', ha='right')
+
+    # 25% credit cap
+    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限額')
+    plt.text(df["寄付金額"].min(), max_credit, '25%税額控除上限額', va='bottom', ha='left')
 
     plt.title('寄付金シミュレーション（Refactored v2 fixed）')
     plt.xlabel('寄付金額')
