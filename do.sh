@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 SCRIPT_DIR=$(cd $(dirname $(readlink -f $0 || echo $0)); pwd -P)
 cd "$SCRIPT_DIR"
@@ -29,6 +30,7 @@ CARRYFORWARD_LOSS = 2329386
 STOCK_INCOME_TAX_RATE = 0.15315
 STOCK_RESIDENT_TAX_RATE = 0.05
 
+
 def calc_income_tax(taxable_income: float) -> float:
     taxable_income = max(0, int(taxable_income // 1000 * 1000))
     brackets = [
@@ -49,23 +51,17 @@ def calc_income_tax(taxable_income: float) -> float:
         prev = limit
     return tax
 
+
 def add_reconstruction_tax(tax: float) -> float:
     return tax * 1.021
 
-def marginal_rate(income: float) -> float:
-    if income <= 1950000: return 0.05
-    if income <= 3300000: return 0.10
-    if income <= 6950000: return 0.20
-    if income <= 9000000: return 0.23
-    if income <= 18000000: return 0.33
-    if income <= 40000000: return 0.40
-    return 0.45
 
 def compute_income():
     general = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_INCOME_TAX_DEDUCTION)
     resident = max(0, EMPLOYMENT_INCOME - SOCIAL_SECURITY_DEDUCTION - I_DECO - BASIC_RESIDENT_TAX_DEDUCTION)
     stock_income = max(0, STOCK_PROFIT - CARRYFORWARD_LOSS)
     return general, resident, stock_income
+
 
 def simulate():
     general_income, resident_income, stock_income = compute_income()
@@ -74,15 +70,10 @@ def simulate():
     base_stock_tax = stock_income * STOCK_INCOME_TAX_RATE
     base_resident_tax = resident_income * 0.10
 
-    income_rate = marginal_rate(general_income)
-
-    available = base_resident_tax * 0.20
-    denom = max(0.25, 0.9 - income_rate * 1.021)
-
-    donation_upper = int(available / denom + 2000)
+    donation_upper = int(base_resident_tax * 0.25 + 2000)
     donation_upper = min(donation_upper, 800000)
 
-    donation_range = range(100000, donation_upper + 50000, 50000)
+    donation_range = range(0, donation_upper + 1, 25000)
 
     results = []
 
@@ -104,53 +95,35 @@ def simulate():
 
         total_deduction = deduction_income + deduction_resident
 
-        tentative_credit = deductible * 0.40
-        actual_credit = min(tentative_credit, base_resident_tax)
-
-        credit_resident = deductible * 0.10
-        total_credit = actual_credit + credit_resident
-
         results.append({
             "寄付金額": donation,
-            "所得控除還元": total_deduction,
-            "税額控除還元": total_credit
+            "所得控除還元": total_deduction
         })
 
-    return pd.DataFrame(results), donation_upper, base_resident_tax
+    return pd.DataFrame(results), donation_upper
 
-def plot(df, donation_upper, max_credit):
-    plt.figure(figsize=(14, 7))
 
-    df = df.sort_values("寄付金額").reset_index(drop=True)
+def plot(df, donation_upper):
+    df = df.sort_values("寄付金額")
 
     x = df["寄付金額"]
-    y1 = df["所得控除還元"]
-    y2 = df["税額控除還元"]
+    y = df["所得控除還元"]
 
-    total_income = compute_income()[0] + compute_income()[2]
+    plt.figure(figsize=(14, 7))
+    plt.plot(x, y, label="還元額", linewidth=2)
 
     ax = plt.gca()
 
-    # X axis: 40% of total income
-    xmax = float(total_income * 0.40)
-
-    # Y axis: max deduction value
-    ymax = float(max(y1.max(), y2.max()))
-
-    plt.plot(x, y1, color="blue", label="所得控除還元", linewidth=2)
-    plt.plot(x, y2, color="green", label="税額控除還元", linewidth=2)
-
-    ax.set_xlim(0, xmax * 1.02)
-    ax.set_ylim(0, ymax * 1.05)
+    ax.set_xlim(0, donation_upper)
+    ax.set_ylim(0, y.max() * 1.05)
 
     fmt = mticker.StrMethodFormatter('{x:,.0f}')
     ax.xaxis.set_major_formatter(fmt)
     ax.yaxis.set_major_formatter(fmt)
 
-    plt.axvline(xmax, linestyle='--', color='black', label='総所得金額等40%（表示上限）')
-    plt.axhline(max_credit, linestyle='--', color='red', label='25%税額控除上限（還元上限額）')
+    plt.axvline(donation_upper, linestyle='--', color='black', label='上限')
 
-    plt.title('寄付金シミュレーション（requested axis spec）')
+    plt.title('寄付金シミュレーション（通常モード）')
     plt.xlabel('寄付金額')
     plt.ylabel('還元額')
 
@@ -158,8 +131,7 @@ def plot(df, donation_upper, max_credit):
     plt.legend()
     plt.savefig('output.png', dpi=300, bbox_inches='tight')
 
-# main
 
-df, upper, cap = simulate()
-plot(df, upper, cap)
+df, upper = simulate()
+plot(df, upper)
 HEREDOC
